@@ -5,11 +5,13 @@ import math
 import json
 import os
 import tempfile
+import time
 import tkinter as tk
 from tkinter import messagebox
 
 
 MOODS = ("Curious", "Happy", "Playful", "Excited", "Sleepy", "Focus")
+NAP_AFTER_SECONDS = 120
 MESSAGES = {
     "Curious": "What's that? Niny is curious!",
     "Happy": "Niny is happy! 💜",
@@ -29,7 +31,8 @@ def preferences_path():
 
 
 def load_preferences(path):
-    defaults = {"stay_on_top": False, "idle_motion": True, "compact": False}
+    defaults = {"stay_on_top": False, "idle_motion": True, "compact": False,
+                "idle_naps": True}
     try:
         saved = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -62,6 +65,8 @@ class Niny:
         self.preference_path = preference_path if preference_path is not None else preferences_path()
         settings = load_preferences(self.preference_path)
         self.mood_index = 0
+        self.last_interaction = time.monotonic()
+        self.napping = False
         self.image = None
         self.portrait_source = None
         self.stage_height = 400
@@ -108,20 +113,32 @@ class Niny:
                        command=self.change_preferences, bg="#f4edff",
                        fg="#49325e", activebackground="#f4edff").pack()
         self.compact = tk.BooleanVar(value=settings["compact"])
+        self.idle_naps = tk.BooleanVar(value=settings["idle_naps"])
         tk.Checkbutton(self.controls, text="Compact companion", variable=self.compact,
                        command=self.change_preferences, bg="#f4edff",
                        fg="#49325e", activebackground="#f4edff").pack()
+        tk.Checkbutton(self.controls, text="Nap after two quiet minutes",
+                       variable=self.idle_naps, command=self.change_preferences,
+                       bg="#f4edff", fg="#49325e",
+                       activebackground="#f4edff").pack()
         self.hint = tk.StringVar(value="Click to pet · Drag to move · Right-click for menu")
         tk.Label(self.controls, textvariable=self.hint,
                  bg="#f4edff", fg="#713ca2", font=("Segoe UI", 9)).pack(pady=(4, 12))
         self.menu = tk.Menu(root, tearoff=False)
         self.menu.add_command(label="Pet Niny 💜", command=self.pet)
+        self.mood_menu = tk.Menu(self.menu, tearoff=False)
+        for mood in MOODS:
+            self.mood_menu.add_radiobutton(label=mood, variable=self.mood, value=mood,
+                                           command=lambda chosen=mood: self.choose_mood(chosen))
+        self.menu.add_cascade(label="Mood", menu=self.mood_menu)
         self.menu.add_separator()
         self.menu.add_checkbutton(label="Compact companion", variable=self.compact,
                                   command=self.change_preferences)
         self.menu.add_checkbutton(label="Stay on top", variable=self.stay_on_top,
                                   command=self.change_preferences)
         self.menu.add_checkbutton(label="Gentle idle motion", variable=self.idle_motion,
+                                  command=self.change_preferences)
+        self.menu.add_checkbutton(label="Nap after two quiet minutes", variable=self.idle_naps,
                                   command=self.change_preferences)
         self.menu.add_separator()
         self.menu.add_command(label="Close Niny", command=root.destroy)
@@ -135,6 +152,7 @@ class Niny:
         self.animate_idle()
 
     def show_menu(self, event):
+        self.last_interaction = time.monotonic()
         try:
             self.menu.tk_popup(event.x_root, event.y_root)
         finally:
@@ -169,6 +187,7 @@ class Niny:
         self.root.geometry("")
 
     def change_preferences(self):
+        self.last_interaction = time.monotonic()
         self.set_stay_on_top()
         self.apply_compact()
         try:
@@ -176,6 +195,7 @@ class Niny:
                 "stay_on_top": self.stay_on_top.get(),
                 "idle_motion": self.idle_motion.get(),
                 "compact": self.compact.get(),
+                "idle_naps": self.idle_naps.get(),
             })
         except OSError:
             self.hint.set("Preferences work now, but couldn't be saved.")
@@ -186,6 +206,7 @@ class Niny:
         self.root.attributes("-topmost", self.stay_on_top.get())
 
     def start_drag(self, event):
+        self.last_interaction = time.monotonic()
         self.drag_origin = (event.x_root, event.y_root,
                             self.root.winfo_x(), self.root.winfo_y())
         self.dragged = False
@@ -204,6 +225,7 @@ class Niny:
         if self.drag_origin is None:
             return
         self.move_drag(event)
+        self.last_interaction = time.monotonic()
         if not self.dragged:
             self.pet()
         self.drag_origin = None
@@ -229,17 +251,33 @@ class Niny:
             messagebox.showwarning("Niny's image", str(error), parent=self.root)
 
     def pet(self, event=None):
-        self.mood_index = (self.mood_index + 1) % len(MOODS)
-        mood = MOODS[self.mood_index]
-        self.mood.set(mood)
-        self.message.set(MESSAGES[mood])
-        self.root.title(f"Niny · {mood} 💜")
-        self.update_reaction(mood)
+        mood = "Happy" if self.napping else MOODS[(self.mood_index + 1) % len(MOODS)]
+        self.choose_mood(mood)
         if self.heart_timer is not None:
             self.root.after_cancel(self.heart_timer)
         self.heart.place(relx=0.82, y=35, anchor="center")
         self.heart.lift()
         self.heart_timer = self.root.after(900, self.hide_heart)
+
+    def choose_mood(self, mood):
+        self.last_interaction = time.monotonic()
+        self.napping = False
+        self.set_mood(mood)
+
+    def set_mood(self, mood):
+        self.mood_index = MOODS.index(mood)
+        self.mood.set(mood)
+        self.message.set(MESSAGES[mood])
+        self.root.title(f"Niny · {mood} 💜")
+        self.update_reaction(mood)
+
+    def check_idle(self):
+        mood = MOODS[self.mood_index]
+        if (self.idle_naps.get() and mood not in ("Focus", "Sleepy")
+                and self.drag_origin is None
+                and time.monotonic() - self.last_interaction >= NAP_AFTER_SECONDS):
+            self.napping = True
+            self.set_mood("Sleepy")
 
     def update_reaction(self, mood):
         self.glow.place_forget()
@@ -256,6 +294,7 @@ class Niny:
         self.heart_timer = None
 
     def animate_idle(self):
+        self.check_idle()
         mood = MOODS[self.mood_index]
         self.idle_phase += 0.07 if mood == "Sleepy" else 0.14
         still = not self.idle_motion.get() or mood == "Focus" or self.drag_origin is not None

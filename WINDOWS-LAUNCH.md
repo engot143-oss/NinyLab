@@ -35,6 +35,12 @@ Right-click Niny to pet her, restore the full window, change settings, or close
 her. The normal title bar and close button remain available. Compact mode is
 also remembered next launch. The approved image is resized in memory only.
 
+Niny settles into Sleepy after two minutes without petting, dragging, or menu
+interaction. Petting wakes an automatic nap into Happy. **Focus** stays quiet
+until you change it. Turn **Nap after two quiet minutes** off to disable naps;
+this preference is remembered too. Right-click **Mood** to choose any state
+directly. Idle detection observes only interactions with Niny, not other apps.
+
 This launcher does not modify the existing app or image. Before future app
 changes, copy `niny.py` and `niny.png` into a separate `rollback-v0.2` folder
 and keep that copy unchanged.
