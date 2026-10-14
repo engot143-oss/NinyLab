@@ -1,5 +1,10 @@
 # Launch Niny on Windows
 
+Your uploaded v0.1 and v0.2 code is preserved byte-for-byte under `originals/`.
+The current build keeps v0.2's dark-purple styling and original Happy message,
+with the added companion behaviors. The upload named `niny.png.py` was Python
+code, not an image; it is preserved as `originals/v0.1/niny.py`.
+
 For this new prototype, use a separate folder such as
 `C:\Users\enriq\NinyLab-next` to preserve your existing working app. Copy
 `niny.py`, `Launch Niny.vbs`, and `Set up Niny.cmd` there. Add your approved

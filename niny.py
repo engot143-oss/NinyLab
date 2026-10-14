@@ -107,33 +107,33 @@ class Niny:
         self.drag_origin = None
         self.dragged = False
         root.title("Niny 💜")
-        root.configure(bg="#f4edff")
+        root.configure(bg="#241334")
         root.resizable(False, False)
         root.protocol("WM_DELETE_WINDOW", root.destroy)
         root.bind("<Destroy>", self.cleanup, add="+")
 
-        self.stage = tk.Frame(root, bg="#f4edff", width=408, height=400)
+        self.stage = tk.Frame(root, bg="#241334", width=408, height=400)
         self.stage.pack(padx=8, pady=(8, 0))
         self.stage.pack_propagate(False)
         self.glow = tk.Canvas(self.stage, width=392, height=384,
-                              bg="#f4edff", highlightthickness=0)
-        for inset, color in ((4, "#eee1ff"), (12, "#e7d4fc"), (22, "#dfc5f8")):
+                              bg="#241334", highlightthickness=0)
+        for inset, color in ((4, "#301b42"), (12, "#3d2356"), (22, "#4a2a67")):
             self.glow.create_oval(inset, inset, 392 - inset, 384 - inset,
                                   fill=color, outline=color)
-        self.portrait = tk.Label(self.stage, bg="#f4edff", fg="#713ca2")
+        self.portrait = tk.Label(self.stage, bg="#241334", fg="#D9A7FF")
         self.portrait.place(relx=0.5, y=200, anchor="center")
         self.load_portrait()
-        self.heart = tk.Label(self.stage, text="💜", bg="#f4edff",
-                              fg="#9751cb", font=("Segoe UI", 24))
-        self.sleepy = tk.Label(self.stage, text="Zzz", bg="#f4edff",
-                               fg="#9751cb", font=("Segoe UI", 18, "italic"))
+        self.heart = tk.Label(self.stage, text="💜", bg="#241334",
+                              fg="#D9A7FF", font=("Segoe UI", 24))
+        self.sleepy = tk.Label(self.stage, text="Zzz", bg="#241334",
+                               fg="#D9A7FF", font=("Segoe UI", 18, "italic"))
         self.mood = tk.StringVar(value=MOODS[0])
-        self.controls = tk.Frame(root, bg="#f4edff")
+        self.controls = tk.Frame(root, bg="#241334")
         self.controls.pack()
-        tk.Label(self.controls, textvariable=self.mood, bg="#f4edff", fg="#713ca2",
+        tk.Label(self.controls, textvariable=self.mood, bg="#241334", fg="#D9A7FF",
                  font=("Segoe UI", 13, "bold")).pack()
         self.message = tk.StringVar(value=MESSAGES[MOODS[0]])
-        tk.Label(self.controls, textvariable=self.message, bg="#f4edff", fg="#49325e",
+        tk.Label(self.controls, textvariable=self.message, bg="#241334", fg="#f5eaff",
                  font=("Segoe UI", 11), wraplength=300, height=2).pack(padx=20, pady=8)
         tk.Button(self.controls, text="Pet Niny", command=self.pet,
                   font=("Segoe UI", 11), padx=20, pady=7).pack(pady=(0, 8))
@@ -141,24 +141,24 @@ class Niny:
                   font=("Segoe UI", 10)).pack(pady=(0, 8))
         self.stay_on_top = tk.BooleanVar(value=settings["stay_on_top"])
         tk.Checkbutton(self.controls, text="Stay on top", variable=self.stay_on_top,
-                       command=self.change_preferences, bg="#f4edff",
-                       fg="#49325e", activebackground="#f4edff").pack()
+                       command=self.change_preferences, bg="#241334",
+                       fg="#f5eaff", activebackground="#241334").pack()
         self.idle_motion = tk.BooleanVar(value=settings["idle_motion"])
         tk.Checkbutton(self.controls, text="Gentle idle motion", variable=self.idle_motion,
-                       command=self.change_preferences, bg="#f4edff",
-                       fg="#49325e", activebackground="#f4edff").pack()
+                       command=self.change_preferences, bg="#241334",
+                       fg="#f5eaff", activebackground="#241334").pack()
         self.compact = tk.BooleanVar(value=settings["compact"])
         self.idle_naps = tk.BooleanVar(value=settings["idle_naps"])
         tk.Checkbutton(self.controls, text="Compact companion", variable=self.compact,
-                       command=self.change_preferences, bg="#f4edff",
-                       fg="#49325e", activebackground="#f4edff").pack()
+                       command=self.change_preferences, bg="#241334",
+                       fg="#f5eaff", activebackground="#241334").pack()
         tk.Checkbutton(self.controls, text="Nap after two quiet minutes",
                        variable=self.idle_naps, command=self.change_preferences,
-                       bg="#f4edff", fg="#49325e",
-                       activebackground="#f4edff").pack()
+                       bg="#241334", fg="#f5eaff",
+                       activebackground="#241334").pack()
         self.hint = tk.StringVar(value="Click to pet · Drag to move · Right-click for menu")
         tk.Label(self.controls, textvariable=self.hint,
-                 bg="#f4edff", fg="#713ca2", font=("Segoe UI", 9)).pack(pady=(4, 12))
+                 bg="#241334", fg="#D9A7FF", font=("Segoe UI", 9)).pack(pady=(4, 12))
         self.menu = tk.Menu(root, tearoff=False)
         self.menu.add_command(label="Pet Niny 💜", command=self.pet)
         self.mood_menu = tk.Menu(self.menu, tearoff=False)
