@@ -25,10 +25,15 @@ An illustrated tail-hug is still pending approved artwork.
 Drag Niny's image to move her window; releasing after a drag does not pet her.
 Enable **Stay on top** to keep her above other windows, or turn it off to let
 other windows cover her. Turn **Gentle idle motion** off for a still companion.
-These two preferences are saved locally in
+Preferences are saved locally in
 `%LOCALAPPDATA%\Niny\preferences.json` on Windows and restored next launch.
 If saving is unavailable, Niny still works for the current session and tells
 you in the footer. No account, network service, or database is involved.
+
+Enable **Compact companion** for a smaller window with the controls hidden.
+Right-click Niny to pet her, restore the full window, change settings, or close
+her. The normal title bar and close button remain available. Compact mode is
+also remembered next launch. The approved image is resized in memory only.
 
 This launcher does not modify the existing app or image. Before future app
 changes, copy `niny.py` and `niny.png` into a separate `rollback-v0.2` folder
