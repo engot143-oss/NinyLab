@@ -16,6 +16,9 @@ It uses `.venv\Scripts\pythonw.exe`, starts without a Command Prompt, and
 sets the working directory so the existing image path continues to work.
 Close Niny's own window to exit. You can create a desktop shortcut to the
 launcher using Windows' **Send to > Desktop (create shortcut)** option.
+Alternatively, double-click **Create Niny shortcut.vbs** to create one
+automatically. It preserves existing shortcuts by choosing a new name. Keep
+the extracted folder in place afterward; moving it breaks the shortcut.
 
 You can also use **Choose Niny image…** in the window or right-click menu to
 select your approved PNG anywhere on your PC. Niny remembers its location and
