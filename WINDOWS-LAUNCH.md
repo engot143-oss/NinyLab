@@ -12,6 +12,12 @@ sets the working directory so the existing image path continues to work.
 Close Niny's own window to exit. You can create a desktop shortcut to the
 launcher using Windows' **Send to > Desktop (create shortcut)** option.
 
+You can also use **Choose Niny image…** in the window or right-click menu to
+select your approved PNG anywhere on your PC. Niny remembers its location and
+does not copy, overwrite, or edit the file. Cancelling or selecting an invalid
+image keeps the current portrait. Keep the selected image at that location;
+if it goes missing, Niny falls back to the bundled `niny.png` or a placeholder.
+
 Without `niny.png`, this prototype shows a text placeholder. The first pet
 changes Curious to Happy and displays **Niny is happy! 💜**. Further pets or
 image clicks cycle Playful, Excited, Sleepy, Focus, then Curious. Mood changes
@@ -54,3 +60,5 @@ The Windows launcher and setup script have not been run on Windows; Python
 If nothing appears, run `.venv\Scripts\python.exe niny.py` from NinyLab in a
 Command Prompt to see the application's error. If Windows reports that Windows
 Script Host is disabled, report that message rather than changing security policy.
+Application startup and callback errors also display a dialog and save the
+latest traceback to `%LOCALAPPDATA%\Niny\last-error.log` when writable.

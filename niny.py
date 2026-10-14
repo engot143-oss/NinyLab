@@ -6,8 +6,10 @@ import json
 import os
 import tempfile
 import time
+import sys
+import traceback
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import filedialog, messagebox
 
 
 MOODS = ("Curious", "Happy", "Playful", "Excited", "Sleepy", "Focus")
@@ -32,7 +34,7 @@ def preferences_path():
 
 def load_preferences(path):
     defaults = {"stay_on_top": False, "idle_motion": True, "compact": False,
-                "idle_naps": True}
+                "idle_naps": True, "image_path": ""}
     try:
         saved = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -41,7 +43,34 @@ def load_preferences(path):
         for key in defaults:
             if type(saved.get(key)) is bool:
                 defaults[key] = saved[key]
+        defaults["image_path"] = saved.get("image_path", "") if isinstance(saved.get("image_path"), str) else ""
     return defaults
+
+
+def read_portrait(path):
+    from PIL import Image
+    with Image.open(path) as source:
+        return source.convert("RGBA")
+
+
+def report_error(error_type, error, trace, parent=None, log_path=None):
+    path = log_path if log_path is not None else preferences_path().with_name("last-error.log")
+    details = "".join(traceback.format_exception(error_type, error, trace))
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(details, encoding="utf-8")
+        location = f"Details saved to:\n{path}"
+    except OSError:
+        location = "Niny couldn't save an error log."
+    text = f"Niny hit a problem: {error}\n\n{location}"
+    try:
+        messagebox.showerror("Niny needs a little help", text, parent=parent)
+    except tk.TclError:
+        if os.name == "nt":
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(None, text, "Niny needs a little help", 0x10)
+        elif sys.stderr is not None:
+            print(text, file=sys.stderr)
 
 
 def save_preferences(path, settings):
@@ -64,6 +93,8 @@ class Niny:
         self.root = root
         self.preference_path = preference_path if preference_path is not None else preferences_path()
         settings = load_preferences(self.preference_path)
+        self.image_path = settings["image_path"]
+        self.choosing_image = False
         self.mood_index = 0
         self.last_interaction = time.monotonic()
         self.napping = False
@@ -72,12 +103,14 @@ class Niny:
         self.stage_height = 400
         self.idle_phase = 0
         self.heart_timer = None
+        self.idle_timer = None
         self.drag_origin = None
         self.dragged = False
         root.title("Niny 💜")
         root.configure(bg="#f4edff")
         root.resizable(False, False)
         root.protocol("WM_DELETE_WINDOW", root.destroy)
+        root.bind("<Destroy>", self.cleanup, add="+")
 
         self.stage = tk.Frame(root, bg="#f4edff", width=408, height=400)
         self.stage.pack(padx=8, pady=(8, 0))
@@ -104,6 +137,8 @@ class Niny:
                  font=("Segoe UI", 11), wraplength=300, height=2).pack(padx=20, pady=8)
         tk.Button(self.controls, text="Pet Niny", command=self.pet,
                   font=("Segoe UI", 11), padx=20, pady=7).pack(pady=(0, 8))
+        tk.Button(self.controls, text="Choose Niny image…", command=self.choose_image,
+                  font=("Segoe UI", 10)).pack(pady=(0, 8))
         self.stay_on_top = tk.BooleanVar(value=settings["stay_on_top"])
         tk.Checkbutton(self.controls, text="Stay on top", variable=self.stay_on_top,
                        command=self.change_preferences, bg="#f4edff",
@@ -131,6 +166,7 @@ class Niny:
             self.mood_menu.add_radiobutton(label=mood, variable=self.mood, value=mood,
                                            command=lambda chosen=mood: self.choose_mood(chosen))
         self.menu.add_cascade(label="Mood", menu=self.mood_menu)
+        self.menu.add_command(label="Choose Niny image…", command=self.choose_image)
         self.menu.add_separator()
         self.menu.add_checkbutton(label="Compact companion", variable=self.compact,
                                   command=self.change_preferences)
@@ -151,12 +187,45 @@ class Niny:
         self.apply_compact()
         self.animate_idle()
 
+    def cleanup(self, event):
+        if event.widget is not self.root:
+            return
+        for timer in (self.idle_timer, self.heart_timer):
+            if timer is not None:
+                try:
+                    self.root.after_cancel(timer)
+                except tk.TclError:
+                    pass
+        self.idle_timer = None
+        self.heart_timer = None
+
     def show_menu(self, event):
         self.last_interaction = time.monotonic()
         try:
             self.menu.tk_popup(event.x_root, event.y_root)
         finally:
             self.menu.grab_release()
+
+    def choose_image(self):
+        self.choosing_image = True
+        try:
+            selected = filedialog.askopenfilename(
+                parent=self.root, title="Choose your approved Niny image",
+                filetypes=[("PNG images", "*.png")])
+            if not selected:
+                return
+            try:
+                portrait = read_portrait(selected)
+            except (ImportError, OSError, ValueError) as error:
+                messagebox.showwarning("Niny's image", str(error), parent=self.root)
+                return
+            self.portrait_source = portrait
+            self.image_path = str(Path(selected).resolve())
+            self.portrait.configure(text="", width=0, height=0)
+            self.change_preferences()
+        finally:
+            self.choosing_image = False
+            self.last_interaction = time.monotonic()
 
     def apply_compact(self):
         compact = self.compact.get()
@@ -196,6 +265,7 @@ class Niny:
                 "idle_motion": self.idle_motion.get(),
                 "compact": self.compact.get(),
                 "idle_naps": self.idle_naps.get(),
+                "image_path": self.image_path,
             })
         except OSError:
             self.hint.set("Preferences work now, but couldn't be saved.")
@@ -231,16 +301,19 @@ class Niny:
         self.drag_origin = None
 
     def load_portrait(self):
-        path = Path(__file__).resolve().with_name("niny.png")
+        bundled = Path(__file__).resolve().with_name("niny.png")
+        path = Path(self.image_path) if self.image_path else bundled
+        if self.image_path and not path.is_file():
+            self.image_path = ""
+            path = bundled
         if not path.is_file():
             self.portrait.configure(
-                text="💜\nNiny's image goes here\n\nAdd niny.png beside niny.py",
+                text="💜\nNiny's image goes here\n\nChoose her image below\nor from the right-click menu",
                 font=("Segoe UI", 14), width=28, height=10)
             return
         try:
             from PIL import Image, ImageTk
-            with Image.open(path) as source:
-                portrait = source.convert("RGBA")
+            portrait = read_portrait(path)
             self.portrait_source = portrait.copy()
             portrait.thumbnail((360, 360), Image.Resampling.LANCZOS)
             self.image = ImageTk.PhotoImage(portrait, master=self.root)
@@ -275,6 +348,7 @@ class Niny:
         mood = MOODS[self.mood_index]
         if (self.idle_naps.get() and mood not in ("Focus", "Sleepy")
                 and self.drag_origin is None
+                and not self.choosing_image
                 and time.monotonic() - self.last_interaction >= NAP_AFTER_SECONDS):
             self.napping = True
             self.set_mood("Sleepy")
@@ -302,14 +376,26 @@ class Niny:
         self.portrait.place_configure(y=self.stage_height / 2 + offset)
         if mood == "Happy":
             self.glow.place_configure(y=self.stage_height / 2 + offset)
-        self.root.after(100, self.animate_idle)
+        self.idle_timer = self.root.after(100, self.animate_idle)
 
 
 def main():
-    root = tk.Tk()
-    Niny(root)
-    root.mainloop()
+    root = None
+    try:
+        root = tk.Tk()
+        root.report_callback_exception = lambda kind, error, trace: report_error(kind, error, trace, parent=root)
+        Niny(root)
+        root.mainloop()
+    except Exception:
+        report_error(*sys.exc_info(), parent=root)
+        if root is not None:
+            try:
+                root.destroy()
+            except tk.TclError:
+                pass
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
